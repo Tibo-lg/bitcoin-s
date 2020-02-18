@@ -3,6 +3,7 @@ package org.bitcoin;
 import org.junit.Test;
 
 import java.math.BigInteger;
+import java.util.Arrays;
 
 import static org.bitcoin.NativeSecp256k1Util.AssertFailException;
 import static org.bitcoin.NativeSecp256k1Util.assertEquals;
@@ -537,6 +538,37 @@ public class NativeSecp256k1Test {
         assertEquals( ecdhString, "2A2A67007A926E6594AF3EB564FC74005B37A9C8AEF2033C4552051B5C87F043" , "testCreateECDHSecret");
     }
 
+    @Test
+    public void testCombineKeys() throws AssertFailException{
+        byte[] pubkey = toByteArray("02545471a397f40591cf72ce21b93c6b0515897540bb6ad1d3eba165769dcde563");
+        byte[] privkey = toByteArray("ded9a76a0a77399e1c2676324118a0386004633f16245ad30d172b15c1f9e2d3");
+        byte[] nonce = toByteArray("be3cc8de25c50e25f69e2f88d151e3f63e99c3a44fed2bdd2e3ee70fe141c5c3");
+        byte[] rPoint = toByteArray("02447b31127de0b6313f6ee96618920a99cca5a0203cb26845fb5c142543741964");
+        byte[] data = toByteArray("0f92be0c4b13ce9b1adcb8b77ea1e7f272ae38fe698d5e9000e1122ce30378c0");
+        byte[] signerPrivKey = toByteArray("c2172cb3d358870c7b1bb1420a9364ffc66e2ec2c65b973554b66ec45e3d69dc");
+        byte[] signerPubKey = toByteArray("02b6597535962501257b076462a67d056950fbca21288bfa96fc2d61abcc6aa2b3");
+
+        byte[] sig = NativeSecp256k1.schnorrSignWithNonce(data, privkey, nonce);
+
+        byte[] committedKey = NativeSecp256k1.computeSchnorrPubKey(data, rPoint, pubkey);
+        byte[] tweakedPriv = NativeSecp256k1.privKeyTweakAdd(signerPrivKey, Arrays.copyOfRange(sig, 32, 64));
+
+        System.out.println(bytesToHex(Arrays.copyOfRange(sig, 0, 32)));
+        System.out.println(bytesToHex(Arrays.copyOfRange(sig, 32, 64)));
+        System.out.println(bytesToHex(committedKey));
+        System.out.println(bytesToHex(tweakedPriv));
+    }
+
+    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+    public static String bytesToHex(byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for (int j = 0; j < bytes.length; j++) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+        }
+        return new String(hexChars);
+    }
 
     //https://stackoverflow.com/a/19119453/967713
     private static byte[] toByteArray(final String hex) {

@@ -10,7 +10,31 @@ class SchnorrTest extends BitcoinSUnitTest {
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     generatorDrivenConfigNewCode
 
+
   behavior of "NativeSecp256k1"
+
+  it must "return the same pubkey" in {
+
+    val pubkey = ECPublicKey.fromHex("02545471a397f40591cf72ce21b93c6b0515897540bb6ad1d3eba165769dcde563")
+    val privkey = ECPrivateKey.fromHex("ded9a76a0a77399e1c2676324118a0386004633f16245ad30d172b15c1f9e2d3")
+    val nonce = SchnorrNonce.fromBytes(org.bitcoins.core.util.BitcoinSUtil.decodeHex("be3cc8de25c50e25f69e2f88d151e3f63e99c3a44fed2bdd2e3ee70fe141c5c3"))
+    val rPoint = ECPublicKey.fromHex("03447b31127de0b6313f6ee96618920a99cca5a0203cb26845fb5c142543741964")
+    val data = org.bitcoins.core.util.BitcoinSUtil.decodeHex("0f92be0c4b13ce9b1adcb8b77ea1e7f272ae38fe698d5e9000e1122ce30378c0")
+    val signerPrivKey = ECPrivateKey.fromHex("c2172cb3d358870c7b1bb1420a9364ffc66e2ec2c65b973554b66ec45e3d69dc")
+    val signerPubKey = signerPrivKey.publicKey
+
+    val sigWithNonce = NativeSecp256k1.schnorrSignWithNonce(data.toArray, privkey.bytes.toArray, nonce.bytes.toArray)
+    val committedKey = NativeSecp256k1.computeSchnorrPubKey(data.toArray, rPoint.bytes.toArray, pubkey.bytes.toArray)
+    val tweakKey = NativeSecp256k1.privKeyTweakAdd(signerPrivKey.bytes.toArray, sigWithNonce.slice(32, 64))
+    val tweakPubkey = signerPubKey.add(ECPublicKey.fromBytes(ByteVector.apply(committedKey)))
+
+    val privTweakKey = ECPrivateKey.fromBytes(ByteVector.apply(tweakKey))
+
+    println(privTweakKey.publicKey.toString())
+    println(tweakPubkey.toString())
+
+    assert(tweakPubkey.equals(privTweakKey.publicKey))
+  }
 
   it must "act like a normal schnorrSign if the normal nonce is specified" in {
     forAll(CryptoGenerators.nonZeroPrivKey, NumberGenerator.bytevector(32)) {
